@@ -1,4 +1,4 @@
-package com.example.Postify;
+package com.example.Postify.controller;
 
 
 import com.example.Postify.dto.UserSignupRequest;
