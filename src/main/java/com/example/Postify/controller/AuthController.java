@@ -1,16 +1,17 @@
 package com.example.Postify.controller;
 
 
+import com.example.Postify.dto.DeleteUserRequest;
 import com.example.Postify.dto.UserLoginRequest;
 import com.example.Postify.dto.UserSignupRequest;
+import com.example.Postify.security.UserDetailsImpl;
 import com.example.Postify.service.AuthService;
 import com.example.Postify.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -31,6 +32,15 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody UserLoginRequest request) {
         String token = authService.login(request);
         return ResponseEntity.ok().body("Bearer " + token);
+    }
+
+    @DeleteMapping("/users/me")
+    public ResponseEntity<?> deleteUser(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody DeleteUserRequest request
+    ) {
+        userService.deleteUser(userDetails.getUser(), request.getPassword());
+        return ResponseEntity.ok("회원 탈퇴 완료");
     }
 
 }

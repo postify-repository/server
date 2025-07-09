@@ -7,6 +7,7 @@ import com.example.Postify.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,5 +25,13 @@ public class AuthService {
         }
 
         return jwtUtil.generateToken(user.getEmail());
+    }
+
+    public void deleteUser(User user, String rawPassword) {
+        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+        }
+
+        userRepository.delete(user); // 관련 데이터가 있다면 함께 삭제되도록 설정
     }
 }

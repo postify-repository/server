@@ -34,4 +34,15 @@ public class UserService {
 
         userRepository.save(user);
     }
+
+    public void deleteUser(User user, String password) {
+        // 비밀번호 검증
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+        }
+
+        // 회원 삭제
+        userRepository.delete(user);
+    }
+
 }
