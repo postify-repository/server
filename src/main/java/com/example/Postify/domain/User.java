@@ -1,8 +1,9 @@
 package com.example.Postify.domain;
 
-
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.Map;
 
 @Entity
 @Table(name = "users")
@@ -28,21 +29,27 @@ public class User {
 
     private String profileImage;
 
+    private String displayName; // 명세서에 따라 추가
+
     @Column(columnDefinition = "TEXT")
-    private String bio;
+    private String shortBio; // bio → shortBio로 이름 수정
+
+    @ElementCollection
+    @CollectionTable(name = "user_social_links", joinColumns = @JoinColumn(name = "user_id"))
+    @MapKeyColumn(name = "platform")
+    @Column(name = "url")
+    private Map<String, String> socialLinks; // GitHub, Twitter 등
 
     @Builder
-    public User(String username, String email, String nickname, String passwordHash, String profileImage, String bio) {
+    public User(String username, String email, String nickname, String passwordHash,
+                String profileImage, String displayName, String shortBio, Map<String, String> socialLinks) {
         this.username = username;
         this.email = email;
         this.nickname = nickname;
         this.passwordHash = passwordHash;
         this.profileImage = profileImage;
-        this.bio = bio;
+        this.displayName = displayName;
+        this.shortBio = shortBio;
+        this.socialLinks = socialLinks;
     }
 }
-
-// @Getter + @NoArgsConstructor : 롬복으로 생성자 + 접근 보호
-// @Builder : 테스트/서비스 계층에서 객체 생성시 가독성 올라감
-// @Column(nullable = false, unique = true) : DB 제약조건 확실히 설정(중복 방지)
-// password → passwordHash : 보안상 해시 저장임을 명확히 표현
