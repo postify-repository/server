@@ -2,6 +2,7 @@ package com.example.Postify.controller;
 
 import com.example.Postify.dto.*;
 import com.example.Postify.exception.BadRequestException;
+import com.example.Postify.exception.InvalidTokenException;
 import com.example.Postify.jwt.JwtUtil;
 import com.example.Postify.security.CustomUserDetails;
 import com.example.Postify.service.AuthService;
@@ -22,7 +23,7 @@ public class AuthController {
 
     private final UserService userService;
     private final AuthService authService;
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
 
     @PostMapping("/signup")
     public ResponseEntity<UserSignupResponse> signup(@Valid @RequestBody UserSignupRequest request) {
@@ -54,37 +55,43 @@ public class AuthController {
 
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails,
-                                       HttpServletResponse response) {
-        // 서버에서 refreshToken 무효화할 경우 authService.logout() 실행
+    public ResponseEntity<MessageResponse> logout(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                  HttpServletResponse response) {
         authService.logout(userDetails.getUser().getEmail());
 
-        // 쿠키 삭제
         Cookie cookie = new Cookie("refreshToken", null);
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
         cookie.setPath("/");
-        cookie.setMaxAge(0); // 삭제
+        cookie.setMaxAge(0);
 
         response.addCookie(cookie);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new MessageResponse("로그아웃 되었습니다."));
     }
 
 
     // 회원 탈퇴
     @DeleteMapping("/account")
-    public ResponseEntity<MessageResponse> deleteAccount(@AuthenticationPrincipal String email,
-                                                         @RequestBody DeleteUserRequest request) {
-        userService.deleteUser(email, request.getPassword());
+    public ResponseEntity<MessageResponse> deleteAccount(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                         @Valid @RequestBody DeleteUserRequest request) {
+        userService.deleteUser(userDetails.getUser(), request.getPassword());
         return ResponseEntity.ok(new MessageResponse("계정이 삭제되었습니다."));
     }
 
+
     @PostMapping("/refresh-token")
-    public ResponseEntity<TokenRefreshResponse> refreshToken(@RequestBody TokenRefreshRequest request) {
-        String newAccessToken = authService.refreshToken(request.getRefreshToken());
+    public ResponseEntity<TokenRefreshResponse> refreshToken(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken
+    ) {
+        if (refreshToken == null) {
+            throw new InvalidTokenException("유효하지 않은 refresh token입니다.", "refreshToken");
+        }
+
+        String newAccessToken = authService.refreshToken(refreshToken);
         return ResponseEntity.ok(new TokenRefreshResponse(newAccessToken));
     }
+
 
 
 }

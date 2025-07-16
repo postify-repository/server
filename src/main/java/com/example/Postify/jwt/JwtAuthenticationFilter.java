@@ -2,6 +2,7 @@ package com.example.Postify.jwt;
 
 import com.example.Postify.domain.User;
 import com.example.Postify.repository.UserRepository;
+import com.example.Postify.security.CustomUserDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,15 +43,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .orElse(null);
 
             if (user != null) {
+                // CustomUserDetails 사용
+                CustomUserDetails userDetails = new CustomUserDetails(user);
+
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        user, null, null
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
                 );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }
 
         filterChain.doFilter(request, response);
     }
+
 }

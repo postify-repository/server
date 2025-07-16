@@ -3,9 +3,7 @@ package com.example.Postify.service;
 import com.example.Postify.domain.User;
 import com.example.Postify.dto.UserLoginRequest;
 import com.example.Postify.dto.UserLoginSuccessResponse;
-import com.example.Postify.exception.BadRequestException;
-import com.example.Postify.exception.DuplicateEmailException;
-import com.example.Postify.exception.DuplicateNicknameException;
+import com.example.Postify.exception.*;
 import com.example.Postify.dto.UserSignupRequest;
 import com.example.Postify.jwt.JwtUtil;
 import com.example.Postify.repository.UserRepository;
@@ -35,9 +33,11 @@ public class AuthService {
 
         return new UserLoginSuccessResponse(
                 token,
+                user.getUsername(),
                 user.getEmail(),
                 user.getNickname(),
-                user.getDisplayName()
+                user.getId().toString(),
+                user.getShortBio()
         );
     }
 
@@ -66,13 +66,8 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    // 회원 탈퇴
-    public void deleteUser(User user, String rawPassword) {
-        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
-            throw new BadRequestException("비밀번호가 일치하지 않습니다.", "password");
-        }
-        userRepository.delete(user);
-    }
+
+
 
     // 로그아웃
     public void logout(String email) {
@@ -81,8 +76,20 @@ public class AuthService {
 
     // 토큰 재발급
     public String refreshToken(String refreshToken) {
-        return jwtUtil.refreshAccessToken(refreshToken);
+        if (!jwtUtil.isTokenValid(refreshToken)) {
+            throw new InvalidTokenException("유효하지 않은 refresh token입니다.", "refreshToken");
+        }
+
+        if (jwtUtil.isTokenExpired(refreshToken)) {
+            throw new TokenExpiredException("refresh token이 만료되었습니다.", "refreshToken");
+        }
+
+        String email = jwtUtil.extractEmail(refreshToken);
+        return jwtUtil.generateToken(email); // 새 accessToken 생성
     }
+
+
+
 
 
 }

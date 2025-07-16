@@ -1,18 +1,24 @@
 package com.example.Postify.jwt;
 
+import com.example.Postify.config.JwtProperties;
 import com.example.Postify.exception.InvalidTokenException;
 import com.example.Postify.exception.TokenExpiredException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
 
+@RequiredArgsConstructor
 @Component
 public class JwtUtil {
+
+    private final JwtProperties jwtProperties;
+
 
     @Value("${jwt.secret}")
     private String secret;
@@ -24,8 +30,16 @@ public class JwtUtil {
 
     @PostConstruct
     public void init() {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        String secret = jwtProperties.getSecret();
+        if (secret == null) {
+            System.out.println("❌ jwt.secret is null! Check your config and @EnableConfigurationProperties.");
+        } else {
+            System.out.println("✅ jwt.secret loaded: " + secret);
+            this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        }
     }
+
+
 
     // Access Token 생성
     public String generateToken(String email) {
@@ -95,10 +109,20 @@ public class JwtUtil {
 
     // Claims 파싱
     private Claims getClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(this.key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        try {
+            System.out.println(">>>> Verifying token: " + token);
+            return Jwts.parserBuilder()
+                    .setSigningKey(this.key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (Exception e) {
+            System.out.println(">>>> JWT verification failed: " + e.getMessage());
+            throw e;
+        }
     }
+
+
+
+
 }
