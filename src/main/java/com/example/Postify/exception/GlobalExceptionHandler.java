@@ -61,4 +61,12 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("TokenExpiredError", ex.getMessage(), ex.getField()));
     }
 
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateEmail(DuplicateEmailException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("DuplicateEmailError", ex.getMessage(), "email"));
+    }
+
+
 }

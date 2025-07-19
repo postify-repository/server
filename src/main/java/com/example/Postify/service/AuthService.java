@@ -41,34 +41,6 @@ public class AuthService {
         );
     }
 
-    // 회원가입
-    @Transactional
-    public void signup(UserSignupRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateEmailException("이미 등록된 이메일입니다.");
-        }
-
-        if (userRepository.existsByNickname(request.getNickname())) {
-            throw new DuplicateNicknameException("이미 사용 중인 닉네임입니다.");
-        }
-
-        User user = User.builder()
-                .username(request.getUsername())
-                .nickname(request.getNickname())
-                .displayName(request.getDisplayName())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .shortBio(request.getShortBio())
-                .profileImage(request.getProfileImage())
-                .socialLinks(request.getSocialLinks())
-                .build();
-
-        userRepository.save(user);
-    }
-
-
-
-
     // 로그아웃
     public void logout(String email) {
 

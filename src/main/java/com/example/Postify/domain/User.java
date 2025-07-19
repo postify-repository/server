@@ -34,6 +34,13 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String shortBio; // bio → shortBio로 이름 수정
 
+    @Column(nullable = true)
+    private String provider;
+
+    @Column(nullable = true)
+    private String providerId;
+
+
     @ElementCollection
     @CollectionTable(name = "user_social_links", joinColumns = @JoinColumn(name = "user_id"))
     @MapKeyColumn(name = "platform")
@@ -42,7 +49,7 @@ public class User {
 
     @Builder
     public User(String username, String email, String nickname, String passwordHash,
-                String profileImage, String displayName, String shortBio, Map<String, String> socialLinks) {
+                String profileImage, String displayName, String shortBio, Map<String, String> socialLinks, String provider, String providerId) {
         this.username = username;
         this.email = email;
         this.nickname = nickname;
@@ -51,5 +58,7 @@ public class User {
         this.displayName = displayName;
         this.shortBio = shortBio;
         this.socialLinks = socialLinks;
+        this.provider = provider;
+        this.providerId = providerId;
     }
 }
