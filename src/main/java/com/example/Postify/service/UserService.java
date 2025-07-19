@@ -1,15 +1,19 @@
 package com.example.Postify.service;
 
 import com.example.Postify.domain.User;
+import com.example.Postify.dto.SocialRegisterRequest;
 import com.example.Postify.dto.UserSignupRequest;
 import com.example.Postify.exception.BadRequestException;
 import com.example.Postify.exception.DuplicateEmailException;
 import com.example.Postify.exception.DuplicateNicknameException;
 import com.example.Postify.exception.UserNotFoundException;
+import com.example.Postify.provider.OAuthUserInfo;
 import com.example.Postify.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.example.Postify.provider.OAuthProviderType;
+
 
 @Service
 @RequiredArgsConstructor
@@ -61,4 +65,32 @@ public class UserService {
         }
         userRepository.delete(user);
     }
+
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
+    public User findByProviderOrThrow(OAuthProviderType provider, String providerId) {
+        return userRepository.findByProviderAndProviderId(provider.name(), providerId)
+                .orElseThrow(() -> new RuntimeException("소셜 인증에 실패했습니다."));
+    }
+
+    public User createSocialUser(OAuthUserInfo userInfo, SocialRegisterRequest request) {
+        User user = User.builder()
+                .email(userInfo.getEmail())
+                .provider(userInfo.getProvider().name())
+                .providerId(userInfo.getProviderId())
+                .username(request.getUsername())
+                .nickname(request.getNickname())
+                .passwordHash("SOCIAL_LOGIN") // 임시 패스워드
+                .displayName(request.getUsername())
+                .shortBio(request.getBio())
+                .build();
+
+
+        return userRepository.save(user);
+    }
+
+
 }
+
