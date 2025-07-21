@@ -30,10 +30,17 @@ public class SecurityConfig {
                 .httpBasic(basic -> basic.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        // 인증 없이 접근 가능한 경로만 명시적으로 허용
+                        .requestMatchers(
+                                "/auth/**",               // 로그인, 리프레시 토큰 등
+                                "/users/signup",         // 회원가입
+                                "/users/me"              // 내 정보 조회
+                        ).permitAll()
+
+                        // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
-                .authenticationProvider(authenticationProvider()) // 👈 추가됨
+                .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -49,11 +56,10 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // 👇 추가: 사용자 인증 방식 설정
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService); // CustomUserDetailsService 연결
+        provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }

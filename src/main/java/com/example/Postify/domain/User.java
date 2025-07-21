@@ -2,7 +2,9 @@ package com.example.Postify.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Entity
@@ -61,4 +63,15 @@ public class User {
         this.provider = provider;
         this.providerId = providerId;
     }
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    public void updateProfile(String nickname, String bio, String profileImage) {
+        this.nickname = nickname;
+        this.shortBio = bio;
+        this.profileImage = profileImage;
+    }
+
+
 }

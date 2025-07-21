@@ -1,11 +1,16 @@
 package com.example.Postify.controller;
 
 import com.example.Postify.domain.User;
-import com.example.Postify.dto.UserMeResponse;
+import com.example.Postify.dto.*;
+import com.example.Postify.exception.BadRequestException;
+import com.example.Postify.exception.UnauthorizedException;
 import com.example.Postify.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,4 +36,53 @@ public class UserController {
 
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable String userId) {
+        try {
+            Long id = Long.parseLong(userId);
+            return ResponseEntity.ok(userService.getUserProfile(id));
+        } catch (NumberFormatException e) {
+            throw new BadRequestException("유효하지 않은 사용자 ID입니다.", "userId");
+        }
+    }
+
+    @PutMapping("/{userId}")
+    public ResponseEntity<UserUpdateResponse> updateProfile(
+            @PathVariable Long userId,
+            @RequestBody @Valid UserUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        if (userDetails == null) {
+            throw new UnauthorizedException("로그인이 필요합니다.", "Authorization");
+
+        }
+
+        String currentEmail = userDetails.getUsername();
+        User updatedUser = userService.updateUserProfile(userId, currentEmail, request);
+        return ResponseEntity.ok(new UserUpdateResponse(updatedUser));
+    }
+
+    @GetMapping("/{userId}/follow")
+    public ResponseEntity<FollowListResponse> getFollowList(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        FollowListResponse response = userService.getFollowingUsers(userId, page, limit);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{userId}/follower")
+    public ResponseEntity<FollowListResponse> getFollowerList(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        FollowListResponse response = userService.getFollowers(userId, page, limit);
+        return ResponseEntity.ok(response);
+    }
+
+
+
 }

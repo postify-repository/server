@@ -1,18 +1,21 @@
 package com.example.Postify.service;
 
 import com.example.Postify.domain.User;
-import com.example.Postify.dto.SocialRegisterRequest;
-import com.example.Postify.dto.UserSignupRequest;
-import com.example.Postify.exception.BadRequestException;
-import com.example.Postify.exception.DuplicateEmailException;
-import com.example.Postify.exception.DuplicateNicknameException;
-import com.example.Postify.exception.UserNotFoundException;
+import com.example.Postify.dto.*;
+import com.example.Postify.exception.*;
 import com.example.Postify.provider.OAuthUserInfo;
+import com.example.Postify.repository.FollowRepository;
 import com.example.Postify.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.example.Postify.provider.OAuthProviderType;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 
 @Service
@@ -20,6 +23,7 @@ import com.example.Postify.provider.OAuthProviderType;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final FollowRepository followRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
     public void signup(UserSignupRequest request) {
@@ -30,7 +34,7 @@ public class UserService {
 
         // 닉네임 중복 확인
         if (userRepository.existsByNickname(request.getNickname())) {
-            throw new DuplicateNicknameException("이미 사용 중인 닉네임입니다.");
+            throw new DuplicateNicknameException("이미 사용 중인 닉네임입니다.", "nickname");
         }
 
         // 비밀번호 암호화
@@ -90,6 +94,101 @@ public class UserService {
 
         return userRepository.save(user);
     }
+
+    public UserProfileResponse getUserProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("존재하지 않는 사용자입니다.", userId));
+        return new UserProfileResponse(user);
+    }
+
+    @Transactional
+    public User updateUserProfile(Long userId, String currentEmail, UserUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("존재하지 않는 사용자입니다.", userId));
+
+        if (!user.getEmail().equals(currentEmail)) {
+            throw new ForbiddenException("다른 사용자의 프로필을 수정할 수 없습니다.");
+        }
+
+        if (!user.getNickname().equals(request.getNickname())
+                && userRepository.existsByNickname(request.getNickname())) {
+            throw new DuplicateNicknameException("이미 사용 중인 닉네임입니다.", "nickname");
+        }
+
+        user.updateProfile(request.getNickname(), request.getBio(), request.getProfileImage());
+        return user;
+    }
+
+    public FollowListResponse getFollowingUsers(Long userId, int page, int limit) {
+        if (page < 1) {
+            throw new BadRequestException("page는 1 이상의 숫자여야 합니다.", "page");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("존재하지 않는 사용자입니다.", userId));
+
+        Pageable pageable = PageRequest.of(page - 1, limit);
+        Page<User> followings = followRepository.findFollowingUsers(userId, pageable);
+
+        List<FollowUserResponse> userList = followings.getContent().stream()
+                .map(u -> new FollowUserResponse(
+                        u.getId(),
+                        u.getNickname(),
+                        u.getProfileImage(),
+                        u.getShortBio()
+                ))
+                .toList();
+
+        return new FollowListResponse(
+                followings.getTotalElements(),
+                userList,
+                new FollowListResponse.Pagination(
+                        page,
+                        limit,
+                        followings.getTotalPages(),
+                        followings.getTotalElements(),
+                        followings.hasNext()
+                )
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public FollowListResponse getFollowers(Long userId, int page, int limit) {
+        if (page < 1 || limit < 1 || limit > 100) {
+            throw new BadRequestException("Limit은 1에서 100 사이의 숫자여야 합니다.", "limit");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("존재하지 않는 사용자입니다.", userId));
+
+        Pageable pageable = PageRequest.of(page - 1, limit);
+        Page<User> followers = followRepository.findFollowersByUserId(userId, pageable);
+
+        List<FollowUserResponse> userList = followers.getContent().stream()
+                .map(u -> new FollowUserResponse(
+                        u.getId(),
+                        u.getNickname(),
+                        u.getProfileImage(),
+                        u.getShortBio()
+                ))
+                .toList();
+
+        return new FollowListResponse(
+                followers.getTotalElements(),
+                userList,
+                new FollowListResponse.Pagination(
+                        page,
+                        limit,
+                        followers.getTotalPages(),
+                        followers.getTotalElements(),
+                        followers.hasNext()
+                )
+        );
+    }
+
+
+
+
 
 
 }
