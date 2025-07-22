@@ -1,7 +1,14 @@
 package com.example.Postify.exception;
 
 public class DuplicateNicknameException extends RuntimeException {
-    public DuplicateNicknameException(String message) {
+    private final String field;
+
+    public DuplicateNicknameException(String message, String field) {
         super(message);
+        this.field = field;
+    }
+
+    public String getField() {
+        return field;
     }
 }
