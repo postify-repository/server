@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 import com.example.Postify.provider.OAuthProviderType;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -29,7 +31,7 @@ public class UserService {
     public void signup(UserSignupRequest request) {
         // 이메일 중복 확인
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateEmailException("이미 등록된 이메일입니다.");
+            throw new DuplicateEmailException("이미 등록된 이메일입니다.", "email");
         }
 
         // 닉네임 중복 확인
@@ -43,18 +45,72 @@ public class UserService {
         // User 엔티티 생성
         User user = User.builder()
                 .username(request.getUsername())
-                .nickname(request.getNickname())
-                .displayName(request.getDisplayName())
                 .email(request.getEmail())
                 .passwordHash(encodedPassword)
-                .shortBio(request.getShortBio())
-                .profileImage(request.getProfileImage())
-                .socialLinks(request.getSocialLinks())
+                .nickname(request.getNickname())
+                .shortBio(request.getBio())
                 .build();
 
         // 저장
         userRepository.save(user);
     }
+
+    public void registerUser(UserSignupRequest request) {
+
+        // 🔽 필수 필드 수동 체크 (명세서: MissingFieldError 목적)
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            throw new MissingFieldException("username은 필수 입력 항목입니다.", "username");
+        }
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new MissingFieldException("email은 필수 입력 항목입니다.", "email");
+        }
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new MissingFieldException("password는 필수 입력 항목입니다.", "password");
+        }
+        if (request.getNickname() == null || request.getNickname().trim().isEmpty()) {
+            throw new MissingFieldException("nickname은 필수 입력 항목입니다.", "nickname");
+        }
+        // 유효성 검증 실패 항목 수집
+        List<Map<String, String>> fieldErrors = new ArrayList<>();
+
+        // 이메일 형식 검사
+        if (!request.getEmail().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            fieldErrors.add(Map.of("field", "email", "message", "이메일 형식이 올바르지 않습니다."));
+        }
+
+        // 비밀번호 길이 검사
+        if (request.getPassword().length() < 8) {
+            fieldErrors.add(Map.of("field", "password", "message", "비밀번호는 8자 이상이어야 합니다."));
+        }
+
+        // 오류가 하나라도 있다면 ValidationException 던짐
+        if (!fieldErrors.isEmpty()) {
+            throw new ValidationException("입력값이 유효하지 않습니다.", fieldErrors);
+        }
+
+
+        // 🔽 중복 체크
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateEmailException("이미 등록된 이메일입니다.", "email");
+        }
+
+        if (userRepository.existsByNickname(request.getNickname())) {
+            throw new DuplicateNicknameException("이미 사용 중인 닉네임입니다.", "nickname");
+        }
+
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .passwordHash(encodedPassword)
+                .nickname(request.getNickname())
+                .shortBio(request.getBio())
+                .build();
+
+        userRepository.save(user);
+    }
+
 
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)

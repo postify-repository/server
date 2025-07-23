@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -96,14 +98,34 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    // 🔧 수정된 부분 (유효성 검증 실패 시 여러 필드 응답)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-        String field = ex.getBindingResult().getFieldError().getField();
-        String message = ex.getBindingResult().getFieldError().getDefaultMessage();
-        return ResponseEntity
-                .status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(new ErrorResponse("ValidationError", message, field));
+    public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex) {
+        List<Map<String, String>> fieldErrors = new ArrayList<>();
+        ex.getBindingResult().getFieldErrors().forEach(error -> {
+            Map<String, String> fieldError = new HashMap<>();
+            fieldError.put("field", error.getField());
+            fieldError.put("message", error.getDefaultMessage());
+            fieldErrors.add(fieldError);
+        });
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "ValidationError");
+        response.put("message", "입력값이 유효하지 않습니다.");
+        response.put("fields", fieldErrors);
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
     }
 
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<?> handleCustomValidation(ValidationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(Map.of(
+                        "error", "ValidationError",
+                        "message", ex.getMessage(),
+                        "fields", ex.getFieldErrors()
+                ));
+    }
 
 }

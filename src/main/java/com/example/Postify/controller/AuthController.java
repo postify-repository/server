@@ -28,11 +28,10 @@ public class AuthController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/signup")
-    public ResponseEntity<UserSignupResponse> signup(@Valid @RequestBody UserSignupRequest request) {
-        userService.signup(request);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(new UserSignupResponse("회원가입이 완료되었습니다."));
+    public ResponseEntity<MessageResponse> signup(@RequestBody UserSignupRequest request) {
+        userService.registerUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new MessageResponse("회원가입이 완료되었습니다."));
     }
 
     @PostMapping("/login")
