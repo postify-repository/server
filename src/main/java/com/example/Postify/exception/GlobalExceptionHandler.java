@@ -116,4 +116,16 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
     }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<?> handleCustomValidation(ValidationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(Map.of(
+                        "error", "ValidationError",
+                        "message", ex.getMessage(),
+                        "fields", ex.getFieldErrors()
+                ));
+    }
+
 }
