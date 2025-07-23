@@ -69,11 +69,6 @@ public class UserService {
         }
         userRepository.delete(user);
     }
-
-    public boolean existsByEmail(String email) {
-        return userRepository.existsByEmail(email);
-    }
-
     public User findByProviderOrThrow(OAuthProviderType provider, String providerId) {
         return userRepository.findByProviderAndProviderId(provider.name(), providerId)
                 .orElseThrow(() -> new RuntimeException("소셜 인증에 실패했습니다."));
@@ -158,6 +153,7 @@ public class UserService {
             throw new BadRequestException("Limit은 1에서 100 사이의 숫자여야 합니다.", "limit");
         }
 
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("존재하지 않는 사용자입니다.", userId));
 
@@ -184,7 +180,16 @@ public class UserService {
                         followers.hasNext()
                 )
         );
+
+
     }
+
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
+
+
 
 
 
