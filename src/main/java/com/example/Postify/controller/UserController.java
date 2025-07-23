@@ -29,7 +29,6 @@ public class UserController {
                 .id(user.getId())
                 .email(user.getEmail())
                 .username(user.getUsername())
-                .displayName(user.getDisplayName() != null ? user.getDisplayName() : "")
                 .profileImage(user.getProfileImage() != null ? user.getProfileImage() : "")
                 .shortBio(user.getShortBio() != null ? user.getShortBio() : "")
                 .build();

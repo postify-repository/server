@@ -29,7 +29,7 @@ public class UserService {
     public void signup(UserSignupRequest request) {
         // 이메일 중복 확인
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateEmailException("이미 등록된 이메일입니다.");
+            throw new DuplicateEmailException("이미 등록된 이메일입니다.", "email");
         }
 
         // 닉네임 중복 확인
@@ -43,13 +43,10 @@ public class UserService {
         // User 엔티티 생성
         User user = User.builder()
                 .username(request.getUsername())
-                .nickname(request.getNickname())
-                .displayName(request.getDisplayName())
                 .email(request.getEmail())
                 .passwordHash(encodedPassword)
-                .shortBio(request.getShortBio())
-                .profileImage(request.getProfileImage())
-                .socialLinks(request.getSocialLinks())
+                .nickname(request.getNickname())
+                .shortBio(request.getBio())
                 .build();
 
         // 저장

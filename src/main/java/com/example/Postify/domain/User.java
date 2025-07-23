@@ -31,8 +31,6 @@ public class User {
 
     private String profileImage;
 
-    private String displayName; // 명세서에 따라 추가
-
     @Column(columnDefinition = "TEXT")
     private String shortBio; // bio → shortBio로 이름 수정
 
@@ -57,7 +55,6 @@ public class User {
         this.nickname = nickname;
         this.passwordHash = passwordHash;
         this.profileImage = profileImage;
-        this.displayName = displayName;
         this.shortBio = shortBio;
         this.socialLinks = socialLinks;
         this.provider = provider;
