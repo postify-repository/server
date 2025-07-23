@@ -2,6 +2,8 @@ package com.example.Postify.controller;
 
 import com.example.Postify.dto.*;
 import com.example.Postify.exception.BadRequestException;
+import com.example.Postify.exception.ConflictException;
+import com.example.Postify.dto.EmailCheckRequest;
 import com.example.Postify.exception.InvalidTokenException;
 import com.example.Postify.jwt.JwtUtil;
 import com.example.Postify.security.CustomUserDetails;
@@ -91,6 +93,20 @@ public class AuthController {
         String newAccessToken = authService.refreshToken(refreshToken);
         return ResponseEntity.ok(new TokenRefreshResponse(newAccessToken));
     }
+
+    @PostMapping("/email-check")
+    public ResponseEntity<EmailCheckResponse> checkEmail(
+            @Valid @RequestBody EmailCheckRequest request
+    ) {
+        boolean isAvailable = !userService.existsByEmail(request.getEmail());
+
+        if (!isAvailable) {
+            throw new ConflictException("이미 사용 중인 이메일입니다.", "email");
+        }
+
+        return ResponseEntity.ok(new EmailCheckResponse(true, "사용 가능한 이메일입니다."));
+    }
+
 
 
 
