@@ -128,4 +128,13 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(PostNotFoundException.class)
+    public ResponseEntity<?> handlePostNotFound(PostNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "error", "NotFoundError",
+                "message", ex.getMessage(),
+                "field", ex.getField()
+        ));
+    }
+
 }

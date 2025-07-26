@@ -5,6 +5,7 @@ import com.example.Postify.dto.*;
 import com.example.Postify.exception.BadRequestException;
 import com.example.Postify.exception.UnauthorizedException;
 import com.example.Postify.service.UserService;
+import com.example.Postify.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final PostService postService;
 
     @GetMapping("/me")
     public ResponseEntity<UserMeResponse> getMyInfo(Authentication authentication) {
@@ -82,6 +84,23 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("{userId}/posts")
+    public ResponseEntity<PostListResponse> getUserPublicPosts(
+            @PathVariable Long userId,
+            @RequestParam(required = false, defaultValue = "") String query,
+            @RequestParam(required = false, defaultValue = "1") int page,
+            @RequestParam(required = false, defaultValue = "10") int limit) {
 
+        if (page < 1) {
+            throw new BadRequestException("page는 1 이상의 숫자여야 합니다.", "page");
+        }
+
+        if (limit < 1 || limit > 100) {
+            throw new BadRequestException("limit은 1에서 100 사이의 숫자여야 합니다.", "limit");
+        }
+
+        PostListResponse response = postService.getPublicPostsByUser(userId, query, page, limit);
+        return ResponseEntity.ok(response);
+    }
 
 }

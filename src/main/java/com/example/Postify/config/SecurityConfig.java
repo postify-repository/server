@@ -14,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @RequiredArgsConstructor
@@ -35,7 +36,11 @@ public class SecurityConfig {
                                 "/auth/**",               // 로그인, 리프레시 토큰 등
                                 "/users/signup",         // 회원가입
                                 "/users/me"              // 내 정보 조회
+
                         ).permitAll()
+
+                        // GET /posts/{postId} 만 허용
+                        .requestMatchers(HttpMethod.GET, "/posts/*").permitAll()
 
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()

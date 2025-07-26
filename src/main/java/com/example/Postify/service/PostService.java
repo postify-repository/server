@@ -1,22 +1,35 @@
 package com.example.Postify.service;
 
 import com.example.Postify.domain.Post;
+import com.example.Postify.domain.Series;
 import com.example.Postify.domain.User;
 import com.example.Postify.dto.Pagination;
 import com.example.Postify.dto.PostListResponse;
 import com.example.Postify.dto.PostSummaryDto;
+import com.example.Postify.dto.PostCreateRequest;
+import com.example.Postify.dto.PostViewResponse;
+import com.example.Postify.dto.PostUpdateRequest;
 import com.example.Postify.exception.UserNotFoundException;
+import com.example.Postify.exception.PostNotFoundException;
+import com.example.Postify.exception.NotFoundException;
 import com.example.Postify.repository.CommentRepository;
 import com.example.Postify.repository.FollowRepository;
 import com.example.Postify.repository.PostRepository;
 import com.example.Postify.repository.UserRepository;
+import com.example.Postify.repository.SeriesRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
+
+import lombok.extern.slf4j.Slf4j;
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PostService {
@@ -25,6 +38,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
     private final CommentRepository commentRepository;
+    private final SeriesRepository seriesRepository;
 
     // 최신 글 조회
     public Page<Post> getLatestPosts(int page, int limit) {
@@ -87,6 +101,110 @@ public class PostService {
                 postsPage.hasNext()
         );
 
+
+
         return new PostListResponse(postDtos, pagination);
     }
+
+
+    @Transactional
+    public Long createPost(PostCreateRequest request, User user) {
+        log.info("✅ createPost service 진입");
+
+            Series series = null;
+            if (request.getSeriesId() != null) {
+                series = seriesRepository.findById(Long.valueOf(request.getSeriesId()))
+                        .orElseThrow(() -> new NotFoundException("존재하지 않는 시리즈입니다."));
+            }
+
+            String slug = generateSlug(request.getTitle());
+
+            Post post = Post.builder()
+                    .user(user)
+                    .title(request.getTitle())
+                    .content(request.getContent())
+                    .slug(slug)
+                    .thumbnail(request.getThumbnail())
+                    .isPublished(request.isPublic())
+                    .isTemporary(request.isTemporary())
+                    .series(series)
+                    .tags(request.getTags())
+                    .build();
+
+            postRepository.save(post);
+            log.info("✅ 게시글 저장 완료: id={}", post.getId());
+            return post.getId();
+        }
+
+
+    @Transactional(readOnly = true)
+    public PostViewResponse getPostDetail(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException(postId));
+
+        return PostViewResponse.builder()
+                .title(post.getTitle())
+                .tags(post.getTags())
+                .toc(Collections.emptyList())
+                .comments(Collections.emptyList())
+                .like(post.getLikes())
+                .socialLinks(Collections.emptyList())
+                .prevPost(null)
+                .nextPost(null)
+                .build();
+    }
+
+
+
+    private String generateSlug(String title) {
+        String baseSlug = title.toLowerCase().replaceAll("\\s+", "-");
+        String slug = baseSlug;
+        int count = 0;
+
+        while (postRepository.existsBySlug(slug)) {
+            count++;
+            slug = baseSlug + "-" + count;
+        }
+
+        return slug;
+    }
+
+    @Transactional
+    public void updatePost(Long postId, PostUpdateRequest request, User user) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException(postId));
+
+        if (!post.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("작성자만 수정할 수 있습니다.");
+        }
+
+        Series series = null;
+        if (request.getSeriesId() != null) {
+            series = seriesRepository.findById(Long.parseLong(request.getSeriesId()))
+                    .orElseThrow(() -> new NotFoundException("해당 시리즈가 존재하지 않습니다."));
+        }
+
+        post.update(
+                request.getTitle(),
+                request.getContent(),
+                request.getTags(),
+                request.getThumbnail(),
+                series,
+                request.isPublic(),
+                request.isTemporary()
+        );
+    }
+
+    @Transactional
+    public void deletePost(Long postId, User user) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException(postId));
+
+        if (!post.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("작성자만 삭제할 수 있습니다.");
+        }
+
+        postRepository.delete(post);
+    }
+
 }

@@ -4,20 +4,37 @@ import com.example.Postify.domain.Post;
 import com.example.Postify.domain.User;
 import com.example.Postify.dto.PostPageResponse;
 import com.example.Postify.dto.PostResponseDTO;
+import com.example.Postify.dto.PostCreateRequest;
+import com.example.Postify.dto.PostCreateResponse;
+import com.example.Postify.dto.PostViewResponse;
+import com.example.Postify.dto.PostUpdateRequest;
+import com.example.Postify.dto.PostUpdateResponse;
+import com.example.Postify.exception.NotFoundException;
+import com.example.Postify.exception.ErrorResponse;
 import com.example.Postify.repository.UserRepository;
+import com.example.Postify.security.CustomUserDetails;
 import com.example.Postify.service.PostService;
 import lombok.RequiredArgsConstructor;
 import com.example.Postify.exception.BadRequestException;
+import com.example.Postify.exception.InternalServerException;
+import com.example.Postify.exception.PostNotFoundException;
 import com.example.Postify.dto.PostListResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpServerErrorException;
 
 import java.util.List;
+import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
+
+
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/posts")
@@ -87,24 +104,84 @@ public class PostController {
         return ResponseEntity.ok(new PostPageResponse(result, posts.getTotalElements(), posts.getTotalPages()));
     }
 
-    @GetMapping("/{userId}")
-    public ResponseEntity<PostListResponse> getUserPublicPosts(
-            @PathVariable Long userId,
-            @RequestParam(required = false, defaultValue = "") String query,
-            @RequestParam(required = false, defaultValue = "1") int page,
-            @RequestParam(required = false, defaultValue = "10") int limit) {
 
-        if (page < 1) {
-            throw new BadRequestException("page는 1 이상의 숫자여야 합니다.", "page");
+
+
+    @PostMapping
+    public ResponseEntity<?> createPost(@RequestBody PostCreateRequest request,
+                                        @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        log.info("✅ createPost 진입");
+        if (userDetails == null) {
+            log.error("❌ userDetails가 null입니다.");
+            throw new AccessDeniedException("인증되지 않은 사용자입니다.");
         }
 
-        if (limit < 1 || limit > 100) {
-            throw new BadRequestException("limit은 1에서 100 사이의 숫자여야 합니다.", "limit");
+        log.info("✅ userDetails 객체: {}", userDetails);
+        log.info("✅ userDetails.getUser(): {}", userDetails.getUser());
+
+        if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
+            throw new BadRequestException("입력값이 올바르지 않습니다.", "title");
         }
 
-        PostListResponse response = postService.getPublicPostsByUser(userId, query, page, limit);
-        return ResponseEntity.ok(response);
+        try {
+            Long postId = postService.createPost(request, userDetails.getUser());
+            return ResponseEntity.status(201).body(new PostCreateResponse(postId.toString()));
+        } catch (Exception e) {
+            log.error("❌ 게시글 생성 중 예외 발생", e); // ✅ 예외 발생 로그 찍히게!
+            throw new InternalServerException("서버에 문제가 발생했습니다.", "post");
+        }
     }
 
+    @GetMapping("/{postId}")
+    public ResponseEntity<?> getPost(@PathVariable Long postId) {
+        try {
+            PostViewResponse response = postService.getPostDetail(postId);
+            return ResponseEntity.ok(response);
+        } catch (PostNotFoundException  e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InternalServerException("서버에 문제가 발생했습니다.", "postId");
+        }
+    }
+    @PutMapping("/{postId}")
+    public ResponseEntity<?> updatePost(@PathVariable Long postId,
+                                        @RequestBody PostUpdateRequest request,
+                                        @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            postService.updatePost(postId, request, userDetails.getUser());
+            return ResponseEntity.ok(new PostUpdateResponse(postId.toString()));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(
+                    new ErrorResponse("AuthorizationError", e.getMessage(), "postId")
+            );
+        } catch (PostNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+
+            return ResponseEntity.status(500).body(
+                    new InternalServerException( "서버에 문제가 발생했습니다.")
+            );
+        }
+
+    }
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<?> deletePost(@PathVariable Long postId,
+                                        @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            postService.deletePost(postId, userDetails.getUser());
+            return ResponseEntity.ok().body(Map.of("message", "success"));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(
+                    new ErrorResponse("AuthorizationError", e.getMessage(), "postId")
+            );
+        } catch (PostNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(
+                    new InternalServerException( "서버에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.")
+            );
+        }
+    }
 
 }
