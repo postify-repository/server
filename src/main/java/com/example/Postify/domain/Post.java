@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "posts")
@@ -15,7 +17,6 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 작성자
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -27,10 +28,15 @@ public class Post {
     private String content;
 
     @Column(length = 300)
-    private String preview;  // content 앞부분 자동 저장
+    private String preview;
 
     @Column(nullable = false, unique = true)
     private String slug;
+
+    @ElementCollection
+    @CollectionTable(name = "post_tags", joinColumns = @JoinColumn(name = "post_id"))
+    @Column(name = "tag")
+    private List<String> tags = new ArrayList<>();
 
     private String thumbnail;
 
@@ -59,7 +65,7 @@ public class Post {
     @Builder
     public Post(User user, String title, String content, String slug,
                 String thumbnail, boolean isPublished, boolean isTemporary,
-                Series series) {
+                Series series, List<String> tags) {
         this.user = user;
         this.title = title;
         this.content = content;
@@ -71,8 +77,7 @@ public class Post {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.series = series;
-        this.views = 0;
-        this.likes = 0;
+        this.tags = tags != null ? tags : new ArrayList<>();
     }
 
     private String generatePreview(String content) {
@@ -80,8 +85,16 @@ public class Post {
         return content.length() <= 300 ? content : content.substring(0, 300);
     }
 
-    @PreUpdate
-    public void preUpdate() {
+    public void update(String title, String content, List<String> tags, String thumbnail,
+                       Series series, boolean isPublished, boolean isTemporary) {
+        this.title = title;
+        this.content = content;
+        this.tags = tags;
+        this.preview = generatePreview(content);
+        this.thumbnail = thumbnail;
+        this.series = series;
+        this.isPublished = isPublished;
+        this.isTemporary = isTemporary;
         this.updatedAt = LocalDateTime.now();
     }
 }
