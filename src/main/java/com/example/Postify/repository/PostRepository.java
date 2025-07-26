@@ -34,6 +34,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                                      @Param("query") String query,
                                      Pageable pageable);
 
-
-
+    // slug 중복 확인용
+    boolean existsBySlug(String slug);
 }
