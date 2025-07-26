@@ -11,5 +11,5 @@ public class UserLoginSuccessResponse {
     private String email;
     private String nickname;
     private String userId;
-    private String displayName;
+    private String bio;
 }
