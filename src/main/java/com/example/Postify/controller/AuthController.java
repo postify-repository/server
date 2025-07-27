@@ -1,10 +1,9 @@
 package com.example.Postify.controller;
 
+import com.example.Postify.domain.User;
 import com.example.Postify.dto.*;
-import com.example.Postify.exception.BadRequestException;
-import com.example.Postify.exception.ConflictException;
+import com.example.Postify.exception.*;
 import com.example.Postify.dto.EmailCheckRequest;
-import com.example.Postify.exception.InvalidTokenException;
 import com.example.Postify.jwt.JwtUtil;
 import com.example.Postify.security.CustomUserDetails;
 import com.example.Postify.service.AuthService;
@@ -13,7 +12,9 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -35,24 +36,58 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserLoginSuccessResponse> login(@RequestBody UserLoginRequest request,
-                                                          HttpServletResponse response) {
-        UserLoginSuccessResponse loginResult = authService.login(request);
+    public ResponseEntity<UserLoginResponse> login(@RequestBody UserLoginRequest request,
+                                                   HttpServletResponse response) {
+        try {
+            if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+                throw new MissingFieldException("email은 필수 입력 항목입니다.", "email");
+            }
+            if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+                throw new MissingFieldException("password는 필수 입력 항목입니다.", "password");
+            }
 
-        // Refresh Token 생성
-        String refreshToken = jwtUtil.generateRefreshToken(loginResult.getEmail());
+            User user = userService.findByEmail(request.getEmail());
 
-        // 쿠키로 저장
-        Cookie cookie = new Cookie("refreshToken", refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true); // https 환경일 경우
-        cookie.setPath("/");
-        cookie.setMaxAge(14 * 24 * 60 * 60); // 14일
+            if (!authService.passwordMatches(request.getPassword(), user.getPasswordHash())) {
+                throw new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            }
 
-        response.addCookie(cookie);
+            String accessToken = jwtUtil.generateToken(user.getId().toString()); // or user.getEmail()
+            String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString()); // or user.getEmail()
 
-        return ResponseEntity.ok(loginResult);
+            // ✅ RefreshToken을 HttpOnly 쿠키로 내려줌
+            ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
+                    .httpOnly(true)
+                    .secure(true)
+                    .path("/")
+                    .maxAge(7 * 24 * 60 * 60) // 7일
+                    .build();
+
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
+            UserLoginResponse loginResponse = new UserLoginResponse(
+                    accessToken,
+                    user.getUsername(),
+                    user.getEmail(),
+                    user.getNickname(),
+                    user.getId().toString(), // Long → String
+                    user.getShortBio()
+            );
+
+
+            return ResponseEntity.ok(loginResponse);
+
+        } catch (MissingFieldException | ValidationException e) {
+            throw e; // GlobalExceptionHandler에서 처리
+        } catch (UserNotFoundException | UnauthorizedException e) {
+            throw new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        } catch (Exception e) {
+            throw new InternalServerException("서버에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        }
     }
+
+
+
 
 
     @PostMapping("/logout")

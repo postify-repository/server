@@ -128,4 +128,11 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(InternalServerException.class)
+    public ResponseEntity<ErrorResponse> handleInternalServer(InternalServerException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("InternalServerError", ex.getMessage(), null));
+    }
+
+
 }
