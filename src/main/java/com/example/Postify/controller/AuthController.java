@@ -9,6 +9,7 @@ import com.example.Postify.security.CustomUserDetails;
 import com.example.Postify.service.AuthService;
 import com.example.Postify.service.UserService;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,9 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -91,20 +95,33 @@ public class AuthController {
 
 
     @PostMapping("/logout")
-    public ResponseEntity<MessageResponse> logout(@AuthenticationPrincipal CustomUserDetails userDetails,
-                                                  HttpServletResponse response) {
-        authService.logout(userDetails.getUser().getEmail());
+    public ResponseEntity<Map<String, String>> logout(HttpServletRequest request,
+                                                      HttpServletResponse response) {
+        // 1. Authorization 헤더 확인 및 액세스 토큰 추출
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new UnauthorizedException("로그인 정보가 유효하지 않습니다.");
+        }
 
-        Cookie cookie = new Cookie("refreshToken", null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
+        String accessToken = authHeader.substring(7);
+        if (!jwtUtil.validateToken(accessToken)) {
+            throw new UnauthorizedException("로그인 정보가 유효하지 않습니다.");
+        }
 
-        response.addCookie(cookie);
+        // 2. refreshToken 쿠키 삭제
+        Cookie deleteRefreshToken = new Cookie("refreshToken", null);
+        deleteRefreshToken.setHttpOnly(true);
+        deleteRefreshToken.setSecure(true); // HTTPS일 경우만 true, 개발환경이면 false도 가능
+        deleteRefreshToken.setPath("/");
+        deleteRefreshToken.setMaxAge(0); // 삭제 처리
+        response.addCookie(deleteRefreshToken);
 
-        return ResponseEntity.ok(new MessageResponse("로그아웃 되었습니다."));
+        // 3. 응답 반환
+        Map<String, String> result = new HashMap<>();
+        result.put("message", "로그아웃 되었습니다.");
+        return ResponseEntity.ok(result);
     }
+
 
 
     // 회원 탈퇴

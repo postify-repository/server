@@ -36,14 +36,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
+
+        // 🔐 토큰 유효성 먼저 확인
+        if (!jwtUtil.isTokenValid(token)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // ✅ 토큰이 유효하면 이메일 추출
         String email = jwtUtil.extractEmail(token);
 
-        if (email != null && jwtUtil.isTokenValid(token)) {
-            User user = userRepository.findByEmail(email)
-                    .orElse(null);
-
+        // 🔒 SecurityContext에 인증 정보가 없을 때만 설정
+        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            User user = userRepository.findByEmail(email).orElse(null);
             if (user != null) {
-                // CustomUserDetails 사용
                 CustomUserDetails userDetails = new CustomUserDetails(user);
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -58,5 +64,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
+
 
 }
