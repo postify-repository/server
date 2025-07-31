@@ -5,6 +5,7 @@ import com.example.Postify.security.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -36,7 +37,7 @@ public class SecurityConfig {
                                 "/users/signup",         // 회원가입
                                 "/users/me"              // 내 정보 조회
                         ).permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/posts/*").permitAll()
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )

@@ -56,8 +56,8 @@ public class AuthController {
                 throw new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다.");
             }
 
-            String accessToken = jwtUtil.generateToken(user.getId().toString()); // or user.getEmail()
-            String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString()); // or user.getEmail()
+            String accessToken = jwtUtil.generateToken(user.getEmail()); // or user.getEmail()
+            String refreshToken = jwtUtil.generateRefreshToken(user.getEmail()); // or user.getEmail()
 
             // ✅ RefreshToken을 HttpOnly 쿠키로 내려줌
             ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
