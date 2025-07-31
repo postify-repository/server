@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 
-@ControllerAdvice
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadRequestException.class)
@@ -133,6 +133,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("InternalServerError", ex.getMessage(), null));
     }
+
+
 
 
 }
